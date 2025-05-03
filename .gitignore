@@ -1,0 +1,32 @@
+# Node
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Build output
+dist/
+build/
+*.log
+
+# VSCode
+.vscode/
+
+# Mac 系统文件
+.DS_Store
+
+# 环境变量
+.env
+.env.*
+
+# Chrome 扩展打包产物
+*.crx
+*.pem
+
+# 其他
+.idea/
+*.local
+coverage/
+
+# 备份文件
+*~ 

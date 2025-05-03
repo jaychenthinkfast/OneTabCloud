@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>OneTabCloud</title>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body class="w-96 p-4 bg-gray-100">
+  <div class="space-y-4">
+    <!-- 标题栏 -->
+    <div class="flex justify-between items-center">
+      <h1 class="text-xl font-bold text-gray-800">OneTabCloud</h1>
+      <div class="flex space-x-2">
+        <button id="syncBtn" class="px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600">
+          立即同步
+        </button>
+      </div>
+    </div>
+
+    <!-- 保存标签按钮 -->
+    <div class="bg-white p-4 rounded-lg shadow flex space-x-2">
+      <button id="saveBtn" class="flex-1 px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600">
+        保存当前窗口标签
+      </button>
+      <button id="viewAllBtn" class="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600">
+        查看全部
+      </button>
+    </div>
+
+    <!-- 状态信息 -->
+    <div id="status" class="text-sm text-gray-500 text-center">
+      上次同步: <span id="lastSync">从未同步</span>
+    </div>
+
+    <!-- 操作反馈提示 -->
+    <div id="tipMsg" class="hidden mt-2 text-center text-sm"></div>
+  </div>
+  <script src="popup.js"></script>
+</body>
+</html> 

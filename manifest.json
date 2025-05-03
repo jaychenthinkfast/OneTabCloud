@@ -1,0 +1,29 @@
+{
+  "manifest_version": 3,
+  "name": "OneTabCloud",
+  "version": "1.0.0",
+  "description": "一个受 OneTab 启发的 Chrome 扩展，支持跨设备同步标签页",
+  "permissions": [
+    "tabs",
+    "storage",
+    "alarms"
+  ],
+  "host_permissions": [
+    "https://api.github.com/*"
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "assets/icon16.png",
+      "128": "assets/icon128.png"
+    }
+  },
+  "options_page": "options.html",
+  "background": {
+    "service_worker": "background.js"
+  },
+  "icons": {
+    "16": "assets/icon16.png",
+    "128": "assets/icon128.png"
+  }
+} 

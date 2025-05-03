@@ -1,12 +1,11 @@
-import { decryptData } from './lib/crypto.js';
+import { decompressData } from './lib/crypto.js';
 
 const groupsContainer = document.getElementById('groupsContainer');
 
 // 加载所有分组
 async function loadGroups() {
-  const result = await chrome.storage.local.get(['groups', 'cryptoKey']);
+  const result = await chrome.storage.local.get(['groups']);
   let groups = result.groups || [];
-  const cryptoKey = result.cryptoKey;
   groupsContainer.innerHTML = '';
 
   // 按 lastModified 倒序排列
@@ -38,7 +37,7 @@ async function loadGroups() {
     const restoreAllBtn = document.createElement('button');
     restoreAllBtn.className = 'px-2 py-1 bg-green-500 text-white rounded mr-2 hover:bg-green-600';
     restoreAllBtn.textContent = '恢复全部';
-    restoreAllBtn.onclick = () => restoreAllTabs(group, cryptoKey);
+    restoreAllBtn.onclick = () => restoreAllTabs(group);
     const deleteGroupBtn = document.createElement('button');
     deleteGroupBtn.className = 'px-2 py-1 bg-red-500 text-white rounded hover:bg-red-600';
     deleteGroupBtn.textContent = '删除分组';
@@ -53,9 +52,9 @@ async function loadGroups() {
     tabsList.className = 'space-y-1';
     let tabs = [];
     try {
-      tabs = decryptData(group.tabs, cryptoKey);
+      tabs = decompressData(group.tabs);
     } catch (e) {
-      tabsList.innerHTML = '<div class="text-red-400">标签解密失败</div>';
+      tabsList.innerHTML = '<div class="text-red-400">标签解压缩失败</div>';
     }
     tabs.forEach((tab, idx) => {
       const tabDiv = document.createElement('div');
@@ -84,10 +83,10 @@ function restoreTab(url) {
 }
 
 // 恢复整个分组
-function restoreAllTabs(group, cryptoKey) {
+function restoreAllTabs(group) {
   let tabs = [];
   try {
-    tabs = decryptData(group.tabs, cryptoKey);
+    tabs = decompressData(group.tabs);
   } catch {}
   tabs.forEach(tab => {
     chrome.tabs.create({ url: tab.url });

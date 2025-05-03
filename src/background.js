@@ -1,7 +1,6 @@
 // 导入必要的模块
 import { syncWithGist } from './lib/storage.js';
-import { encryptData } from './lib/crypto.js';
-import CryptoJS from 'crypto-js';
+import { compressData } from './lib/crypto.js';
 
 // 初始化同步定时器
 chrome.alarms.create('syncAlarm', {
@@ -40,17 +39,9 @@ async function saveCurrentTabs(groupName) {
   }));
   console.log('待保存标签数据：', tabData);
 
-  // 获取或生成全局密钥
-  let { cryptoKey } = await chrome.storage.local.get(['cryptoKey']);
-  if (!cryptoKey) {
-    cryptoKey = CryptoJS.lib.WordArray.random(32).toString();
-    await chrome.storage.local.set({ cryptoKey });
-    console.log('自动生成全局加密密钥');
-  }
-
-  // 加密数据
-  const encryptedData = encryptData(tabData, cryptoKey);
-  console.log('加密后数据：', encryptedData);
+  // 压缩数据
+  const compressedData = compressData(tabData);
+  console.log('压缩后数据：', compressedData);
 
   // 获取本地分组
   const result = await chrome.storage.local.get(['groups']);
@@ -60,7 +51,7 @@ async function saveCurrentTabs(groupName) {
     name: groupName,
     version: 1,
     lastModified: new Date().toISOString(),
-    tabs: encryptedData // 只存加密字符串
+    tabs: compressedData
   });
   await chrome.storage.local.set({ groups });
   console.log('保存到本地成功，groups 数量：', groups.length);

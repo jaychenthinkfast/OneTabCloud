@@ -1,5 +1,4 @@
 import { syncWithGist } from '../lib/storage.js';
-import CryptoJS from 'crypto-js';
 
 // DOM 元素
 const patInput = document.getElementById('patInput');
@@ -33,7 +32,7 @@ async function loadSettings() {
   }
 }
 
-// 保存 PAT 并生成全局密钥
+// 保存 PAT
 async function savePat() {
   const pat = patInput.value.trim();
   if (!pat) {
@@ -42,14 +41,6 @@ async function savePat() {
   }
   
   try {
-    // 检查是否已有 cryptoKey
-    const result = await chrome.storage.local.get(['cryptoKey']);
-    let cryptoKey = result.cryptoKey;
-    if (!cryptoKey) {
-      // 生成 32 字节的 key
-      cryptoKey = CryptoJS.lib.WordArray.random(32).toString();
-      await chrome.storage.local.set({ cryptoKey });
-    }
     await chrome.storage.local.set({ pat });
     alert('保存成功');
     

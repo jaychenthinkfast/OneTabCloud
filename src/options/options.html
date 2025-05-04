@@ -9,6 +9,33 @@
   <div class="space-y-6">
     <h1 class="text-2xl font-bold text-gray-800">OneTabCloud 设置</h1>
     
+    <!-- 同步设置 -->
+    <div class="bg-white p-6 rounded-lg shadow">
+      <h2 class="text-lg font-semibold mb-4">同步设置</h2>
+      <div class="space-y-4">
+        <div class="flex items-center">
+          <input type="checkbox" id="syncEnabled" class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded">
+          <label for="syncEnabled" class="ml-2 block text-sm text-gray-900">
+            启用自动同步
+          </label>
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">
+            同步间隔（分钟）
+          </label>
+          <input type="number" id="syncInterval" min="5" max="1440"
+            class="w-full px-3 py-2 border rounded focus:outline-none focus:border-blue-500"
+            placeholder="输入同步间隔（分钟）">
+          <p class="mt-1 text-sm text-gray-500">
+            建议值：30-60分钟。GitHub Gist API 有速率限制，请勿设置过短。
+          </p>
+        </div>
+        <button id="saveSyncConfigBtn" class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">
+          保存同步设置
+        </button>
+      </div>
+    </div>
+    
     <!-- GitHub PAT 设置 -->
     <div class="bg-white p-6 rounded-lg shadow">
       <h2 class="text-lg font-semibold mb-4">GitHub 个人访问令牌</h2>

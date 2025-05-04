@@ -9,15 +9,29 @@ const groupCountSpan = document.getElementById('groupCount');
 const exportBtn = document.getElementById('exportBtn');
 const importInput = document.getElementById('importInput');
 const clearBtn = document.getElementById('clearBtn');
+const syncEnabled = document.getElementById('syncEnabled');
+const syncInterval = document.getElementById('syncInterval');
+const saveSyncConfigBtn = document.getElementById('saveSyncConfigBtn');
+
+// 默认同步配置
+const DEFAULT_SYNC_CONFIG = {
+  enabled: true,
+  interval: 30
+};
 
 // 加载设置
 async function loadSettings() {
-  const result = await chrome.storage.local.get(['pat', 'lastSync', 'groups']);
+  const result = await chrome.storage.local.get(['pat', 'lastSync', 'groups', 'syncConfig']);
   
   // 显示 PAT
   if (result.pat) {
     patInput.value = result.pat;
   }
+  
+  // 显示同步配置
+  const syncConfig = result.syncConfig || DEFAULT_SYNC_CONFIG;
+  syncEnabled.checked = syncConfig.enabled;
+  syncInterval.value = syncConfig.interval;
   
   // 显示上次同步时间
   if (result.lastSync) {
@@ -50,6 +64,22 @@ async function savePat() {
   } catch (error) {
     console.error('保存 PAT 失败:', error);
     alert('保存失败，请检查 PAT 是否正确');
+  }
+}
+
+// 保存同步配置
+async function saveSyncConfig() {
+  const config = {
+    enabled: syncEnabled.checked,
+    interval: Math.max(5, Math.min(1440, parseInt(syncInterval.value) || DEFAULT_SYNC_CONFIG.interval))
+  };
+  
+  try {
+    await chrome.storage.local.set({ syncConfig: config });
+    alert('同步设置已保存');
+  } catch (error) {
+    console.error('保存同步设置失败:', error);
+    alert('保存同步设置失败，请重试');
   }
 }
 
@@ -122,6 +152,7 @@ importInput.addEventListener('change', (e) => {
   }
 });
 clearBtn.addEventListener('click', clearData);
+saveSyncConfigBtn.addEventListener('click', saveSyncConfig);
 
 // 初始化
 document.addEventListener('DOMContentLoaded', loadSettings); 

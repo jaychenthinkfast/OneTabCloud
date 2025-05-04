@@ -2,10 +2,41 @@
 import { syncWithGist } from './lib/storage.js';
 import { compressData } from './lib/crypto.js';
 
-// 初始化同步定时器
-chrome.alarms.create('syncAlarm', {
-  periodInMinutes: 10
+// 默认同步配置
+const DEFAULT_SYNC_CONFIG = {
+  enabled: true,
+  interval: 30 // 默认30分钟同步一次
+};
+
+// 初始化同步配置
+chrome.runtime.onInstalled.addListener(() => {
+  // 初始化存储
+  chrome.storage.local.get(['groups', 'lastSync', 'syncConfig'], (result) => {
+    if (!result.groups) {
+      chrome.storage.local.set({ groups: [], lastSync: null });
+    }
+    if (!result.syncConfig) {
+      chrome.storage.local.set({ syncConfig: DEFAULT_SYNC_CONFIG });
+    }
+  });
 });
+
+// 更新同步定时器
+function updateSyncAlarm() {
+  chrome.storage.local.get(['syncConfig'], (result) => {
+    const config = result.syncConfig || DEFAULT_SYNC_CONFIG;
+    
+    // 清除现有定时器
+    chrome.alarms.clear('syncAlarm');
+    
+    // 如果启用了同步，创建新的定时器
+    if (config.enabled) {
+      chrome.alarms.create('syncAlarm', {
+        periodInMinutes: config.interval
+      });
+    }
+  });
+}
 
 // 监听同步定时器
 chrome.alarms.onAlarm.addListener((alarm) => {
@@ -13,6 +44,16 @@ chrome.alarms.onAlarm.addListener((alarm) => {
     syncWithGist();
   }
 });
+
+// 监听配置变更
+chrome.storage.onChanged.addListener((changes) => {
+  if (changes.syncConfig) {
+    updateSyncAlarm();
+  }
+});
+
+// 初始化同步定时器
+updateSyncAlarm();
 
 // 监听标签保存请求
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
@@ -58,14 +99,4 @@ async function saveCurrentTabs(groupName) {
   // 触发同步，并返回同步结果
   const gistSync = await syncWithGist();
   return gistSync;
-}
-
-// 监听安装事件
-chrome.runtime.onInstalled.addListener(() => {
-  // 初始化存储
-  chrome.storage.local.get(['groups', 'lastSync'], (result) => {
-    if (!result.groups) {
-      chrome.storage.local.set({ groups: [], lastSync: null });
-    }
-  });
-}); 
+} 

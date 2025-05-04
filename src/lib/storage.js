@@ -125,15 +125,31 @@ async function loadFromGist() {
     );
     
     const files = response.data.files;
-    const index = JSON.parse(files['index.json'].content);
+    const indexContent = files['index.json']?.content;
+    if (!indexContent || indexContent.trim() === '') {
+      return { groups: [] };
+    }
+    const index = JSON.parse(indexContent);
     
     // 合并所有分片
     let data = '';
     for (const filename of index.files) {
-      data += files[filename].content;
+      const partContent = files[filename]?.content;
+      if (partContent && partContent.trim() !== '') {
+        data += partContent;
+      }
     }
-    
-    return JSON.parse(data);
+    if (!data || data.trim() === '') {
+      return { groups: [] };
+    }
+    const parsed = JSON.parse(data);
+    if (Array.isArray(parsed.groups)) {
+      return parsed;
+    } else if (Array.isArray(parsed)) {
+      return { groups: parsed };
+    } else {
+      return { groups: [] };
+    }
   } catch (error) {
     console.error('从 Gist 加载数据失败:', error);
     throw error;
@@ -142,19 +158,33 @@ async function loadFromGist() {
 
 // 获取 Gist ID
 async function getGistId() {
-  return new Promise((resolve) => {
+  return new Promise(async (resolve) => {
     chrome.storage.local.get(['gistId'], async (result) => {
-      if (!result.gistId) {
-        const gistId = await createGist();
-        if (!gistId) {
-          resolve(null);
+      if (result.gistId) {
+        resolve(result.gistId);
+        return;
+      }
+      // 自动查找 description 为 OneTabCloud Sync Data 的 Gist
+      const headers = await getAuthHeaders();
+      try {
+        const gistsResp = await axios.get('https://api.github.com/gists', { headers });
+        const found = gistsResp.data.find(g => g.description === 'OneTabCloud Sync Data');
+        if (found) {
+          await chrome.storage.local.set({ gistId: found.id });
+          resolve(found.id);
           return;
         }
-        await chrome.storage.local.set({ gistId });
-        resolve(gistId);
-      } else {
-        resolve(result.gistId);
+      } catch (e) {
+        console.warn('自动查找 Gist 失败:', e);
       }
+      // 没有找到就新建
+      const gistId = await createGist();
+      if (!gistId) {
+        resolve(null);
+        return;
+      }
+      await chrome.storage.local.set({ gistId });
+      resolve(gistId);
     });
   });
 }
@@ -176,8 +206,11 @@ export async function syncWithGist() {
     });
     // 获取远程数据
     const remoteData = await loadFromGist();
-    // 合并数据
-    const mergedGroups = mergeGroups(localData.groups, remoteData.groups);
+    // 合并数据，确保 groups 一定为数组
+    const mergedGroups = mergeGroups(
+      Array.isArray(localData.groups) ? localData.groups : [],
+      Array.isArray(remoteData.groups) ? remoteData.groups : []
+    );
     // 保存合并后的数据
     await chrome.storage.local.set({
       groups: mergedGroups,

@@ -8,6 +8,9 @@ async function loadGroups() {
   let groups = result.groups || [];
   groupsContainer.innerHTML = '';
 
+  // 过滤掉已删除的分组
+  groups = groups.filter(group => !group.deleted);
+
   // 按 lastModified 倒序排列
   groups = groups.slice().sort((a, b) => new Date(b.lastModified) - new Date(a.lastModified));
 
@@ -96,8 +99,19 @@ function restoreAllTabs(group) {
 // 删除分组
 async function deleteGroup(groupId) {
   if (!confirm('确定要删除该分组吗？')) return;
+  
   const result = await chrome.storage.local.get(['groups']);
-  const groups = (result.groups || []).filter(g => g.id !== groupId);
+  const groups = (result.groups || []).map(g => {
+    if (g.id === groupId) {
+      return {
+        ...g,
+        deleted: true,
+        lastModified: new Date().toISOString()
+      };
+    }
+    return g;
+  });
+  
   await chrome.storage.local.set({ groups });
   loadGroups();
 }

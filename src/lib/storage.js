@@ -206,21 +206,44 @@ export async function syncWithGist() {
     });
     // 获取远程数据
     const remoteData = await loadFromGist();
-    // 合并数据，确保 groups 一定为数组
-    const mergedGroups = mergeGroups(
-      Array.isArray(localData.groups) ? localData.groups : [],
-      Array.isArray(remoteData.groups) ? remoteData.groups : []
-    );
-    // 保存合并后的数据
-    await chrome.storage.local.set({
-      groups: mergedGroups,
-      lastSync: new Date().toISOString()
+    
+    const now = new Date().toISOString();
+    const localGroups = Array.isArray(localData.groups) ? localData.groups : [];
+    const remoteGroups = Array.isArray(remoteData.groups) ? remoteData.groups : [];
+    
+    // 找出本地标记为删除的分组，并检查时间戳
+    const deletedGroups = localGroups.filter(group => {
+      if (!group.deleted) return false;
+      const remoteGroup = remoteGroups.find(g => g.id === group.id);
+      // 如果远程没有这个分组，或者本地删除时间更新，则执行删除
+      return !remoteGroup || new Date(group.lastModified) > new Date(remoteGroup.lastModified);
     });
+    
+    // 从远程数据中移除已删除的分组
+    const updatedRemoteGroups = remoteGroups.filter(group => 
+      !deletedGroups.some(g => g.id === group.id)
+    );
+
+    const updatedLocalGroups = localGroups.filter(group => 
+      !deletedGroups.some(g => g.id === group.id)
+    );
+    
+    // 合并数据
+    const finalGroups = mergeGroups(updatedLocalGroups, updatedRemoteGroups);
+    
+    
+    // 保存合并后的数据到本地
+    await chrome.storage.local.set({
+      groups: finalGroups,
+      lastSync: now
+    });
+    
     // 同步到 Gist
     await saveToGist({
-      groups: mergedGroups,
-      lastSync: new Date().toISOString()
+      groups: finalGroups,
+      lastSync: now
     });
+    
     return true;
   } catch (error) {
     console.error('同步失败:', error);
@@ -232,15 +255,16 @@ export async function syncWithGist() {
 function mergeGroups(localGroups = [], remoteGroups = []) {
   const merged = new Map();
   
-  // 添加本地分组
-  localGroups.forEach(group => {
+  // 添加远程分组
+  remoteGroups.forEach(group => {
     merged.set(group.id, group);
   });
   
-  // 合并远程分组
-  remoteGroups.forEach(group => {
-    const localGroup = merged.get(group.id);
-    if (!localGroup || new Date(group.lastModified) > new Date(localGroup.lastModified)) {
+  // 合并本地分组
+  localGroups.forEach(group => {
+    const remoteGroup = merged.get(group.id);
+    // 如果远程没有这个分组，或者本地分组更新，则使用本地分组
+    if (!remoteGroup || new Date(group.lastModified) > new Date(remoteGroup.lastModified)) {
       merged.set(group.id, group);
     }
   });

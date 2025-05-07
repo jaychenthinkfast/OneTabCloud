@@ -90,7 +90,6 @@ async function saveCurrentTabs(groupName) {
   groups.push({
     id: Date.now().toString(),
     name: groupName,
-    version: 1,
     lastModified: new Date().toISOString(),
     tabs: compressedData
   });

@@ -28,7 +28,6 @@ export async function createGist() {
         files: {
           'index.json': {
             content: JSON.stringify({
-              version: 1,
               lastSync: new Date().toISOString(),
               files: []
             })
@@ -71,7 +70,6 @@ export async function saveToGist(data) {
     // 更新索引文件
     files['index.json'] = {
       content: JSON.stringify({
-        version: 1,
         lastSync: new Date().toISOString(),
         files: chunks.map((_, i) => `data-part${i + 1}.json`)
       })

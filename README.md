@@ -25,12 +25,14 @@
    - **数据压缩**：使用 `pako` 进行 Gzip 压缩，减少数据大小 50%-70%。
    - **数据精简**：仅存储必要字段（例如 `{ u: url, t: title, ts: timestamp }`）。
    - **多文件分片**：数据超 900KB 时，拆分为多个文件（例如 `data-part1.json`），通过 `index.json` 跟踪。分片不增加 API 调用次数（单次 `PATCH` 请求更新所有文件）。
-   - **数据清理**：自动删除 30 天未访问的分组，提供手动清理界面。
+   - **数据清理**：
+     - 自动删除 30 天未访问的分组，提供手动清理界面。
+     - 删除分组时自动清空 tabs 数据，减少存储空间占用。
    - **溢出处理**：数据接近 900KB 时暂停同步，提示用户清理或导出。
 4. **解决同步问题**：
    - **定时轮询**：使用 `chrome.alarms` 每 10 分钟同步一次，每小时最多 12 次 API 调用（6 次读取 + 6 次写入）。
    - **增量同步**：仅同步修改的分组/标签，使用 `version` 和 `lastModified` 标记。
-   - **冲突解决**：基于 `lastSync` 时间戳的“最后写入优先”策略，合并非冲突数据。分组比较基于唯一 `id`，而非 `name`。
+   - **冲突解决**：基于 `lastSync` 时间戳的"最后写入优先"策略，合并非冲突数据。分组比较基于唯一 `id`，而非 `name`。
    - **手动同步**：提供界面按钮支持立即同步。
    - **离线支持**：使用 `chrome.storage.local` 缓存数据，联网后同步。
    - **API 调用**：单次同步通常调用 2 次 API（1 次 `GET` 读取，1 次 `PATCH` 写入）；首次同步可能为 3 次（加 1 次 `POST` 创建 Gist）。
@@ -106,13 +108,12 @@ OneTabCloud/
 │   │   ├── popup.html   # 主界面
 │   │   ├── popup.js     # 界面逻辑
 │   │   ├── popup.css    # 样式（Tailwind CSS）
-│   ├── options/
 │   │   ├── options.html # 设置界面（PAT 配置）
 │   │   ├── options.js   # 设置逻辑
-│   ├── lib/
-│   │   ├── gist.js      # Gist API 操作
-│   │   ├── storage.js   # 本地存储和同步逻辑
-│   │   ├── crypto.js    # 加密和压缩
+│   │   ├── lib/
+│   │   │   ├── gist.js      # Gist API 操作
+│   │   │   ├── storage.js   # 本地存储和同步逻辑
+│   │   │   ├── crypto.js    # 加密和压缩
 ├── assets/
 │   ├── icon16.png       # 扩展图标 (16x16)
 │   ├── icon128.png      # 扩展图标 (128x128)
@@ -173,7 +174,7 @@ OneTabCloud/
 ### 阶段 3：界面与优化
 1. **任务**：完善界面
    - 使用 Tailwind CSS 美化 `popup.html` 和 `options.html`。
-   - 添加同步状态显示和容量监控（例如“750KB / 1MB”）。
+   - 添加同步状态显示和容量监控（例如"750KB / 1MB"）。
 2. **任务**：测试
    - 测试大容量数据（5000 个标签）。
    - 测试多设备同步和离线场景。
@@ -189,21 +190,21 @@ OneTabCloud/
 2. 安装依赖：`npm install`
 3. 加载扩展：
    - 打开 Chrome，进入 `chrome://extensions/`。
-   - 启用“开发者模式”，点击“加载已解压的扩展”，选择项目文件夹。
+   - 启用"开发者模式"，点击"加载已解压的扩展"，选择项目文件夹。
 
 ### 用户配置
 1. **生成 PAT**：
-   - 访问 `https://github.com/settings/tokens`，点击“Generate new token”。
+   - 访问 `https://github.com/settings/tokens`，点击"Generate new token"。
    - 勾选 `gist` 权限，生成 PAT 并复制。
 2. **设置扩展**：
    - 安装扩展（从 Chrome 网上应用店或手动加载）。
    - 点击扩展图标，进入设置页面。
-   - 在“GitHub Personal Access Token”输入框粘贴 PAT，点击“设置 PAT”。
+   - 在"GitHub Personal Access Token"输入框粘贴 PAT，点击"设置 PAT"。
    - 扩展自动创建私有 Gist，无需额外配置。
 3. **使用**：
-   - 保存标签：点击“保存所有标签”。
+   - 保存标签：点击"保存所有标签"。
    - 管理标签：查看、恢复或删除分组。
-   - 同步：自动每 10 分钟同步，或点击“立即同步”。
+   - 同步：自动每 10 分钟同步，或点击"立即同步"。
    - 容量管理：监控使用量，清理旧分组或导出备份。
 
 ## 隐私与安全

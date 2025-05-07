@@ -106,6 +106,7 @@ async function deleteGroup(groupId) {
       return {
         ...g,
         deleted: true,
+        tabs: [], // 清空 tabs
         lastModified: new Date().toISOString()
       };
     }

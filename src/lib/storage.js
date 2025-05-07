@@ -37,7 +37,6 @@ async function createGist() {
         files: {
           'index.json': {
             content: JSON.stringify({
-              version: 1,
               lastSync: new Date().toISOString(),
               files: []
             })
@@ -87,7 +86,6 @@ async function saveToGist(data) {
     // 更新索引文件
     files['index.json'] = {
       content: JSON.stringify({
-        version: 1,
         lastSync: new Date().toISOString(),
         files: chunks.map((_, i) => `data-part${i + 1}.json`)
       })
@@ -211,25 +209,25 @@ export async function syncWithGist() {
     const localGroups = Array.isArray(localData.groups) ? localData.groups : [];
     const remoteGroups = Array.isArray(remoteData.groups) ? remoteData.groups : [];
     
-    // 找出本地标记为删除的分组，并检查时间戳
-    const deletedGroups = localGroups.filter(group => {
-      if (!group.deleted) return false;
-      const remoteGroup = remoteGroups.find(g => g.id === group.id);
-      // 如果远程没有这个分组，或者本地删除时间更新，则执行删除
-      return !remoteGroup || new Date(group.lastModified) > new Date(remoteGroup.lastModified);
-    });
+    // // 找出本地标记为删除的分组，并检查时间戳
+    // const deletedGroups = localGroups.filter(group => {
+    //   if (!group.deleted) return false;
+    //   const remoteGroup = remoteGroups.find(g => g.id === group.id);
+    //   // 如果远程没有这个分组，或者本地删除时间更新，则执行删除
+    //   return !remoteGroup || new Date(group.lastModified) > new Date(remoteGroup.lastModified);
+    // });
     
-    // 从远程数据中移除已删除的分组
-    const updatedRemoteGroups = remoteGroups.filter(group => 
-      !deletedGroups.some(g => g.id === group.id)
-    );
+    // // 从远程数据中移除已删除的分组
+    // const updatedRemoteGroups = remoteGroups.filter(group => 
+    //   !deletedGroups.some(g => g.id === group.id)
+    // );
 
-    const updatedLocalGroups = localGroups.filter(group => 
-      !deletedGroups.some(g => g.id === group.id)
-    );
+    // const updatedLocalGroups = localGroups.filter(group => 
+    //   !deletedGroups.some(g => g.id === group.id)
+    // );
     
     // 合并数据
-    const finalGroups = mergeGroups(updatedLocalGroups, updatedRemoteGroups);
+    const finalGroups = mergeGroups(localGroups, remoteGroups);
     
     
     // 保存合并后的数据到本地

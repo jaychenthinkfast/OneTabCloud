@@ -75,6 +75,9 @@ syncBtn.addEventListener('click', async () => {
     await syncWithGist();
     await loadStatus();
     showTip('同步成功', 'success');
+    setTimeout(() => {
+      chrome.tabs.create({ url: chrome.runtime.getURL('view.html') });
+    }, 1000);
   } catch (error) {
     console.error('同步失败:', error);
     showTip('同步失败，请重试', 'error');

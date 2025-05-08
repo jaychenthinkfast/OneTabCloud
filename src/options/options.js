@@ -119,6 +119,8 @@ async function importData(file) {
     await loadSettings();
     
     alert('导入成功');
+    // 跳转到 view 页面
+    window.location.href = '../view.html';
   } catch (error) {
     console.error('导入数据失败:', error);
     alert('导入数据失败，请检查文件格式');
@@ -127,17 +129,33 @@ async function importData(file) {
 
 // 清除数据
 async function clearData() {
-  if (!confirm('确定要清除所有数据吗？此操作不可恢复。')) {
+  if (!confirm('确定要清空所有标签数据吗？此操作不可恢复。')) {
     return;
   }
   
   try {
+    // 获取当前存储的所有数据
+    const result = await chrome.storage.local.get(null);
+    
+    // 保留配置相关的数据
+    const keepData = {
+      pat: result.pat,
+      gistId: result.gistId,
+      syncConfig: result.syncConfig,
+      lastSync: new Date().toISOString()
+    };
+    
+    // 清空所有数据，然后恢复配置
     await chrome.storage.local.clear();
+    await chrome.storage.local.set(keepData);
+    
     await loadSettings();
-    alert('数据已清除');
+    alert('标签数据已清空');
+    // 跳转到 view 页面
+    window.location.href = '../view.html';
   } catch (error) {
-    console.error('清除数据失败:', error);
-    alert('清除数据失败，请重试');
+    console.error('清空数据失败:', error);
+    alert('清空数据失败，请重试');
   }
 }
 

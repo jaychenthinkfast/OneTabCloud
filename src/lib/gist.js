@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { encryptData, decryptData } from './crypto.js';
+import { CHUNK_SIZE } from './constants.js';
 
 // Gist API 配置
 const GIST_API_URL = 'https://api.github.com/gists';
@@ -52,11 +53,10 @@ export async function saveToGist(data) {
     
     // 分片处理
     const chunks = [];
-    const chunkSize = 900 * 1024; // 900KB
     const jsonStr = JSON.stringify(data);
     
-    for (let i = 0; i < jsonStr.length; i += chunkSize) {
-      chunks.push(jsonStr.slice(i, i + chunkSize));
+    for (let i = 0; i < jsonStr.length; i += CHUNK_SIZE) {
+      chunks.push(jsonStr.slice(i, i + CHUNK_SIZE));
     }
     
     // 更新 Gist

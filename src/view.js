@@ -91,8 +91,20 @@ async function loadGroups() {
         editTabTitle(group, tab, idx);
       };
       
+      // 添加移动标签按钮
+      const moveTabBtn = document.createElement('button');
+      moveTabBtn.className = 'ml-2 text-gray-500 hover:text-gray-700';
+      moveTabBtn.innerHTML = '↗';
+      moveTabBtn.title = '移动到其他分组';
+      moveTabBtn.onclick = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        moveTabToGroup(group, tab, idx);
+      };
+      
       linkContainer.appendChild(link);
       linkContainer.appendChild(editTabBtn);
+      linkContainer.appendChild(moveTabBtn);
       
       const restoreBtn = document.createElement('button');
       restoreBtn.className = 'text-green-500 hover:text-green-700';
@@ -198,6 +210,106 @@ async function editTabTitle(group, tab, tabIndex) {
   
   await chrome.storage.local.set({ groups: updatedGroups });
   loadGroups();
+}
+
+// 移动标签到其他分组
+async function moveTabToGroup(sourceGroup, tab, tabIndex) {
+  // 获取所有分组
+  const result = await chrome.storage.local.get(['groups']);
+  const groups = result.groups || [];
+  
+  // 过滤掉源分组和已删除的分组
+  const targetGroups = groups.filter(g => g.id !== sourceGroup.id && !g.deleted);
+  
+  if (targetGroups.length === 0) {
+    alert('没有可用的目标分组');
+    return;
+  }
+  
+  // 创建选择列表
+  const select = document.createElement('select');
+  select.className = 'w-full p-2 border rounded';
+  targetGroups.forEach(g => {
+    const option = document.createElement('option');
+    option.value = g.id;
+    option.textContent = g.name;
+    select.appendChild(option);
+  });
+  
+  // 创建确认对话框
+  const dialog = document.createElement('div');
+  dialog.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center';
+  dialog.innerHTML = `
+    <div class="bg-white p-4 rounded-lg shadow-lg w-96">
+      <h3 class="text-lg font-bold mb-4">选择目标分组</h3>
+      <div class="mb-4"></div>
+      <div class="flex justify-end space-x-2">
+        <button class="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300" id="cancelMove">取消</button>
+        <button class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600" id="confirmMove">移动</button>
+      </div>
+    </div>
+  `;
+  
+  // 添加选择列表到对话框
+  dialog.querySelector('.mb-4').appendChild(select);
+  
+  // 显示对话框
+  document.body.appendChild(dialog);
+  
+  // 处理取消按钮
+  dialog.querySelector('#cancelMove').onclick = () => {
+    document.body.removeChild(dialog);
+  };
+  
+  // 处理确认按钮
+  dialog.querySelector('#confirmMove').onclick = async () => {
+    const targetGroupId = select.value;
+    const targetGroup = targetGroups.find(g => g.id === targetGroupId);
+    
+    if (!targetGroup) {
+      alert('目标分组不存在');
+      return;
+    }
+    
+    try {
+      // 从源分组移除标签
+      const sourceTabs = decompressData(sourceGroup.tabs);
+      const [movedTab] = sourceTabs.splice(tabIndex, 1);
+      
+      // 获取目标分组的标签
+      const targetTabs = decompressData(targetGroup.tabs);
+      targetTabs.push(movedTab);
+      
+      // 更新两个分组
+      const updatedGroups = groups.map(g => {
+        if (g.id === sourceGroup.id) {
+          return {
+            ...g,
+            tabs: compressData(sourceTabs),
+            lastModified: new Date().toISOString()
+          };
+        }
+        if (g.id === targetGroupId) {
+          return {
+            ...g,
+            tabs: compressData(targetTabs),
+            lastModified: new Date().toISOString()
+          };
+        }
+        return g;
+      });
+      
+      // 保存更新
+      await chrome.storage.local.set({ groups: updatedGroups });
+      
+      // 关闭对话框并刷新显示
+      document.body.removeChild(dialog);
+      loadGroups();
+    } catch (error) {
+      console.error('移动标签失败:', error);
+      alert('移动标签失败，请重试');
+    }
+  };
 }
 
 document.addEventListener('DOMContentLoaded', loadGroups); 

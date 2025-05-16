@@ -1,9 +1,10 @@
 import { decompressData, compressData } from './lib/crypto.js';
 
 const groupsContainer = document.getElementById('groupsContainer');
+let allGroupsCache = null;
 
 // 加载所有分组
-async function loadGroups() {
+async function loadGroups(filter = '') {
   const result = await chrome.storage.local.get(['groups']);
   let groups = result.groups || [];
   groupsContainer.innerHTML = '';
@@ -14,11 +15,16 @@ async function loadGroups() {
   // 按 lastModified 倒序排列
   groups = groups.slice().sort((a, b) => new Date(b.lastModified) - new Date(a.lastModified));
 
+  // 缓存所有分组数据，便于搜索时使用
+  if (!filter) allGroupsCache = groups;
+  if (filter && allGroupsCache) groups = allGroupsCache;
+
   if (groups.length === 0) {
     groupsContainer.innerHTML = '<div class="text-center text-gray-400">暂无分组</div>';
     return;
   }
 
+  let hasAnyGroup = false;
   groups.forEach(group => {
     const groupDiv = document.createElement('div');
     groupDiv.className = 'bg-white rounded-lg shadow p-4';
@@ -67,13 +73,24 @@ async function loadGroups() {
     } catch (e) {
       tabsList.innerHTML = '<div class="text-red-400">标签解压缩失败</div>';
     }
-    tabs.forEach((tab, idx) => {
+    // 搜索过滤
+    let filteredTabs = tabs;
+    if (filter) {
+      const kw = filter.trim().toLowerCase();
+      filteredTabs = tabs.filter(tab =>
+        (tab.title && tab.title.toLowerCase().includes(kw)) ||
+        (tab.url && tab.url.toLowerCase().includes(kw))
+      );
+    }
+    if (filteredTabs.length === 0) return; // 该分组无匹配标签则不渲染
+    hasAnyGroup = true;
+    filteredTabs.forEach((tab, idx) => {
       const tabDiv = document.createElement('div');
-      tabDiv.className = 'flex items-center space-x-2';
+      tabDiv.className = 'flex justify-between items-center space-x-2 tab-row';
       
       // 创建链接容器
       const linkContainer = document.createElement('div');
-      linkContainer.className = 'flex items-center flex-1';
+      linkContainer.className = 'flex items-center flex-1 min-w-0';
       
       const link = document.createElement('a');
       link.href = tab.url;
@@ -106,18 +123,37 @@ async function loadGroups() {
       linkContainer.appendChild(editTabBtn);
       linkContainer.appendChild(moveTabBtn);
       
+      // 按钮组
+      const btnGroup = document.createElement('div');
+      btnGroup.className = 'flex space-x-2 flex-shrink-0';
+
+      const deleteBtn = document.createElement('button');
+      deleteBtn.className = 'text-red-500 hover:text-red-700 tab-delete-btn';
+      deleteBtn.textContent = '删除';
+      deleteBtn.onclick = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        deleteTab(group, tab, idx);
+      };
+
       const restoreBtn = document.createElement('button');
-      restoreBtn.className = 'text-green-500 hover:text-green-700';
+      restoreBtn.className = 'text-green-500 hover:text-green-700 tab-restore-btn';
       restoreBtn.textContent = '恢复';
       restoreBtn.onclick = () => restoreTab(tab.url);
-      
+
+      btnGroup.appendChild(deleteBtn);
+      btnGroup.appendChild(restoreBtn);
+
       tabDiv.appendChild(linkContainer);
-      tabDiv.appendChild(restoreBtn);
+      tabDiv.appendChild(btnGroup);
       tabsList.appendChild(tabDiv);
     });
     groupDiv.appendChild(tabsList);
     groupsContainer.appendChild(groupDiv);
   });
+  if (!hasAnyGroup) {
+    groupsContainer.innerHTML = '<div class="text-center text-gray-400">无匹配结果</div>';
+  }
 }
 
 // 恢复单个标签
@@ -312,4 +348,40 @@ async function moveTabToGroup(sourceGroup, tab, tabIndex) {
   };
 }
 
-document.addEventListener('DOMContentLoaded', loadGroups); 
+// 删除单个标签
+async function deleteTab(group, tab, tabIndex) {
+  if (!confirm('确定要删除该标签吗？')) return;
+  const result = await chrome.storage.local.get(['groups']);
+  const groups = result.groups || [];
+  const updatedGroups = groups.map(g => {
+    if (g.id === group.id) {
+      let tabs = [];
+      try {
+        tabs = decompressData(g.tabs);
+        tabs.splice(tabIndex, 1);
+        return {
+          ...g,
+          tabs: compressData(tabs),
+          lastModified: new Date().toISOString()
+        };
+      } catch (e) {
+        console.error('解压缩标签数据失败:', e);
+        return g;
+      }
+    }
+    return g;
+  });
+  await chrome.storage.local.set({ groups: updatedGroups });
+  loadGroups(document.getElementById('searchInput')?.value || '');
+}
+
+// 搜索框监听
+document.addEventListener('DOMContentLoaded', () => {
+  loadGroups();
+  const searchInput = document.getElementById('searchInput');
+  if (searchInput) {
+    searchInput.addEventListener('input', (e) => {
+      loadGroups(e.target.value);
+    });
+  }
+}); 

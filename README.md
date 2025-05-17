@@ -2,6 +2,13 @@
 
 OneTabCloud 是一个 Chrome 扩展，用于保存和管理浏览器标签页，支持数据同步和加密存储。
 
+## 安装说明
+
+您可以通过以下方式安装 OneTabCloud：
+
+1. 在 Chrome 网上应用店搜索 "OneTabCloud"
+2. 点击"添加到 Chrome"按钮进行安装
+
 ## 主要功能
 
 1. **标签管理**：
@@ -10,24 +17,33 @@ OneTabCloud 是一个 Chrome 扩展，用于保存和管理浏览器标签页，
    - 支持编辑组名称和标签标题
    - 支持恢复单个标签或整个分组
    - 支持删除分组
+   - 支持移动标签到其他分组
+   - 支持删除单个标签
+   - 自动生成分组名称（基于时间）
 
 2. **数据存储**：
    - 使用 `chrome.storage.local` 本地存储
    - 数据压缩：使用 Gzip 压缩减少存储空间
    - 自动更新修改时间戳
    - 支持数据导入导出
+   - 支持清空所有数据
+   - 显示存储使用量和分组数量统计
 
 3. **同步功能**：
    - 支持 GitHub Gist 同步
-   - 可配置同步间隔
+   - 可配置同步间隔（5-1440分钟）
    - 支持手动立即同步
    - 基于时间戳的冲突解决
+   - 支持启用/禁用自动同步
+   - 显示上次同步时间
 
 4. **用户界面**：
    - 使用 Tailwind CSS 构建现代化界面
    - 响应式设计
    - 直观的分组和标签管理
    - 编辑功能支持（组名称、标签标题）
+   - 支持搜索标签
+   - 支持按时间排序
 
 ## 技术实现
 
@@ -97,7 +113,9 @@ OneTabCloud 是一个 Chrome 扩展，用于保存和管理浏览器标签页，
 ```
 OneTabCloud/
 ├── manifest.json         # 扩展配置
-├── src/
+├── package.json         # 项目依赖配置
+├── webpack.config.js    # Webpack 构建配置
+├── src/                 # 源代码目录
 │   ├── background.js    # 后台脚本
 │   ├── view.js         # 标签管理界面
 │   ├── popup/
@@ -107,12 +125,32 @@ OneTabCloud/
 │   ├── lib/
 │   │   ├── crypto.js    # 加密和压缩
 │   │   └── storage.js   # 存储和同步
+├── assets/             # 静态资源
+│   ├── icon16.png      # 16x16 图标
+│   └── icon128.png     # 128x128 图标
+└── dist/              # 构建输出目录
 ```
 
 ### 依赖
-- Tailwind CSS：UI 框架
-- pako：数据压缩
-- axios：HTTP 请求
+- 生产依赖：
+  - pako (^2.1.0)：数据压缩
+  - axios (^1.6.2)：HTTP 请求
+
+- 开发依赖：
+  - webpack (^5.89.0)：构建工具
+  - webpack-cli (^5.1.4)：Webpack 命令行工具
+  - copy-webpack-plugin (^11.0.0)：资源复制插件
+  - css-loader (^6.8.1)：CSS 加载器
+  - style-loader (^3.3.3)：样式加载器
+
+### 开发命令
+```bash
+# 开发模式（带热重载）
+npm run dev
+
+# 生产构建
+npm run build
+```
 
 ## 注意事项
 

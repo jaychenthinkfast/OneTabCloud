@@ -12,6 +12,22 @@
     .tab-row {
       align-items: center !important;
     }
+    
+    /* 拖拽相关样式 */
+    .tab-row.dragging {
+      opacity: 0.5;
+      cursor: move;
+    }
+    
+    .group-drop-target {
+      border: 2px dashed #4f46e5;
+      background-color: rgba(79, 70, 229, 0.1);
+    }
+    
+    .group-drop-target.drag-over {
+      border-color: #10b981;
+      background-color: rgba(16, 185, 129, 0.1);
+    }
   </style>
 </head>
 <body class="bg-gray-100 min-h-screen">

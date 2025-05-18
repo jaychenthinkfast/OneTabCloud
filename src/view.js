@@ -87,6 +87,27 @@ async function loadGroups(filter = '') {
     filteredTabs.forEach((tab, idx) => {
       const tabDiv = document.createElement('div');
       tabDiv.className = 'flex justify-between items-center space-x-2 tab-row';
+      tabDiv.draggable = true;
+      tabDiv.dataset.tabIndex = idx;
+      tabDiv.dataset.groupId = group.id;
+      
+      // 拖拽开始事件
+      tabDiv.addEventListener('dragstart', (e) => {
+        e.dataTransfer.setData('text/plain', JSON.stringify({
+          groupId: group.id,
+          tabIndex: idx,
+          tab: tab
+        }));
+        tabDiv.classList.add('dragging');
+      });
+      
+      // 拖拽结束事件
+      tabDiv.addEventListener('dragend', () => {
+        tabDiv.classList.remove('dragging');
+        document.querySelectorAll('.group-drop-target').forEach(el => {
+          el.classList.remove('drag-over');
+        });
+      });
       
       // 创建链接容器
       const linkContainer = document.createElement('div');
@@ -150,6 +171,66 @@ async function loadGroups(filter = '') {
     });
     groupDiv.appendChild(tabsList);
     groupsContainer.appendChild(groupDiv);
+    
+    // 为每个分组添加拖拽目标事件
+    groupDiv.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      const draggingTab = document.querySelector('.dragging');
+      if (draggingTab && draggingTab.dataset.groupId !== group.id) {
+        groupDiv.classList.add('group-drop-target', 'drag-over');
+      }
+    });
+    
+    groupDiv.addEventListener('dragleave', () => {
+      groupDiv.classList.remove('group-drop-target', 'drag-over');
+    });
+    
+    groupDiv.addEventListener('drop', async (e) => {
+      e.preventDefault();
+      groupDiv.classList.remove('group-drop-target', 'drag-over');
+      
+      try {
+        const data = JSON.parse(e.dataTransfer.getData('text/plain'));
+        if (data.groupId === group.id) return; // 不能拖到同一个分组
+        
+        // 从源分组移除标签
+        const sourceGroup = groups.find(g => g.id === data.groupId);
+        if (!sourceGroup) return;
+        
+        const sourceTabs = decompressData(sourceGroup.tabs);
+        const [movedTab] = sourceTabs.splice(data.tabIndex, 1);
+        
+        // 获取目标分组的标签
+        const targetTabs = decompressData(group.tabs);
+        targetTabs.push(movedTab);
+        
+        // 更新两个分组
+        const updatedGroups = groups.map(g => {
+          if (g.id === sourceGroup.id) {
+            return {
+              ...g,
+              tabs: compressData(sourceTabs),
+              lastModified: new Date().toISOString()
+            };
+          }
+          if (g.id === group.id) {
+            return {
+              ...g,
+              tabs: compressData(targetTabs),
+              lastModified: new Date().toISOString()
+            };
+          }
+          return g;
+        });
+        
+        // 保存更新
+        await chrome.storage.local.set({ groups: updatedGroups });
+        loadGroups();
+      } catch (error) {
+        console.error('移动标签失败:', error);
+        alert('移动标签失败，请重试');
+      }
+    });
   });
   if (!hasAnyGroup) {
     groupsContainer.innerHTML = '<div class="text-center text-gray-400">无匹配结果</div>';
@@ -264,7 +345,7 @@ async function moveTabToGroup(sourceGroup, tab, tabIndex) {
   
   // 创建选择列表
   const select = document.createElement('select');
-  select.className = 'w-full p-2 border rounded';
+  select.className = 'p-2 border rounded max-w-xs flex-1';
   targetGroups.forEach(g => {
     const option = document.createElement('option');
     option.value = g.id;
@@ -277,15 +358,18 @@ async function moveTabToGroup(sourceGroup, tab, tabIndex) {
   dialog.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center';
   dialog.innerHTML = `
     <div class="bg-white p-4 rounded-lg shadow-lg w-96">
-      <h3 class="text-lg font-bold mb-4">选择目标分组</h3>
-      <div class="mb-4"></div>
+      <h3 class="text-base font-bold mb-2" style="white-space:nowrap;font-size:14px;">选择目标分组（也可直接拖拽标签到目标分组）</h3>
+      <div class="mb-4 flex">
+        <!-- select 会被插入到这里 -->
+      </div>
       <div class="flex justify-end space-x-2">
         <button class="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300" id="cancelMove">取消</button>
         <button class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600" id="confirmMove">移动</button>
       </div>
     </div>
   `;
-  
+  // 设置 select 的 class，限制最大宽度
+  select.className = 'p-2 border rounded max-w-xs flex-1';
   // 添加选择列表到对话框
   dialog.querySelector('.mb-4').appendChild(select);
   

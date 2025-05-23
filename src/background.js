@@ -73,12 +73,42 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 async function saveCurrentTabs(groupName) {
   console.log('开始保存标签，分组名：', groupName);
   const tabs = await chrome.tabs.query({ currentWindow: true });
-  const tabData = tabs.map(tab => ({
+  
+  // 过滤掉扩展页面和扩展相关页面
+  const filteredTabs = tabs.filter(tab => {
+    // 排除chrome://扩展页面
+    if (tab.url.startsWith('chrome://')) return false;
+    
+    // 排除chrome-extension://扩展页面
+    if (tab.url.startsWith('chrome-extension://')) return false;
+    
+    // 排除edge://扩展页面
+    if (tab.url.startsWith('edge://')) return false;
+    
+    // 排除扩展管理页面
+    if (tab.url.includes('://extensions/')) return false;
+    
+    // 排除moz-extension://扩展页面(Firefox)
+    if (tab.url.startsWith('moz-extension://')) return false;
+    
+    // 排除about:页面(Firefox)
+    if (tab.url.startsWith('about:')) return false;
+    
+    return true;
+  });
+  
+  const tabData = filteredTabs.map(tab => ({
     url: tab.url,
     title: tab.title,
     timestamp: new Date().toISOString()
   }));
   console.log('待保存标签数据：', tabData);
+
+  // 如果过滤后没有标签，则不保存
+  if (tabData.length === 0) {
+    console.log('没有可保存的标签（所有标签都是扩展页面）');
+    throw new Error('没有可保存的标签（所有标签都是扩展页面）');
+  }
 
   // 压缩数据
   const compressedData = compressData(tabData);

@@ -9,8 +9,20 @@ async function loadGroups(filter = '') {
   let groups = result.groups || [];
   groupsContainer.innerHTML = '';
 
-  // 过滤掉已删除的分组
-  groups = groups.filter(group => !group.deleted);
+  // 过滤掉已删除的分组和解析tabs为空的分组
+  groups = groups.filter(group => {
+    if (group.deleted) return false;
+    
+    // 检查tabs是否为空或解析后为空数组
+    try {
+      if (!group.tabs) return false;
+      const tabs = decompressData(group.tabs);
+      return Array.isArray(tabs) && tabs.length > 0;
+    } catch (e) {
+      console.error('解析tabs失败:', e, group);
+      return false;
+    }
+  });
 
   // 按 lastModified 倒序排列
   groups = groups.slice().sort((a, b) => new Date(b.lastModified) - new Date(a.lastModified));
@@ -207,6 +219,15 @@ async function loadGroups(filter = '') {
         // 更新两个分组
         const updatedGroups = groups.map(g => {
           if (g.id === sourceGroup.id) {
+            // 如果源分组变为空，标记为删除
+            if (sourceTabs.length === 0) {
+              return {
+                ...g,
+                deleted: true,
+                tabs: compressData([]),
+                lastModified: new Date().toISOString()
+              };
+            }
             return {
               ...g,
               tabs: compressData(sourceTabs),
@@ -336,7 +357,17 @@ async function moveTabToGroup(sourceGroup, tab, tabIndex) {
   const groups = result.groups || [];
   
   // 过滤掉源分组和已删除的分组
-  const targetGroups = groups.filter(g => g.id !== sourceGroup.id && !g.deleted);
+  const targetGroups = groups.filter(g => {
+    if (g.id === sourceGroup.id || g.deleted) return false;
+    
+    // 过滤掉解析tabs为空的分组
+    try {
+      const tabs = decompressData(g.tabs);
+      return Array.isArray(tabs) && tabs.length > 0;
+    } catch (e) {
+      return false; // 解析失败的分组也过滤掉
+    }
+  });
   
   if (targetGroups.length === 0) {
     alert('没有可用的目标分组');
@@ -403,6 +434,15 @@ async function moveTabToGroup(sourceGroup, tab, tabIndex) {
       // 更新两个分组
       const updatedGroups = groups.map(g => {
         if (g.id === sourceGroup.id) {
+          // 如果源分组变为空，标记为删除
+          if (sourceTabs.length === 0) {
+            return {
+              ...g,
+              deleted: true,
+              tabs: compressData([]),
+              lastModified: new Date().toISOString()
+            };
+          }
           return {
             ...g,
             tabs: compressData(sourceTabs),
@@ -443,6 +483,17 @@ async function deleteTab(group, tab, tabIndex) {
       try {
         tabs = decompressData(g.tabs);
         tabs.splice(tabIndex, 1);
+        
+        // 如果分组变为空，标记为删除
+        if (tabs.length === 0) {
+          return {
+            ...g,
+            deleted: true,
+            tabs: compressData([]),
+            lastModified: new Date().toISOString()
+          };
+        }
+        
         return {
           ...g,
           tabs: compressData(tabs),

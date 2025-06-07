@@ -55,6 +55,14 @@ async function loadGroups(filter = '') {
     editGroupBtn.onclick = () => editGroupName(group);
     title.appendChild(editGroupBtn);
     
+    // 添加新增链接按钮
+    const addLinkBtn = document.createElement('button');
+    addLinkBtn.className = 'ml-2 text-gray-500 hover:text-gray-700';
+    addLinkBtn.innerHTML = '+';
+    addLinkBtn.title = '添加新链接';
+    addLinkBtn.onclick = () => addNewLink(group);
+    title.appendChild(addLinkBtn);
+    
     const time = document.createElement('span');
     time.className = 'text-xs text-gray-400 ml-2';
     time.textContent = new Date(group.lastModified).toLocaleString();
@@ -508,6 +516,123 @@ async function deleteTab(group, tab, tabIndex) {
   });
   await chrome.storage.local.set({ groups: updatedGroups });
   loadGroups(document.getElementById('searchInput')?.value || '');
+}
+
+// 添加新链接到分组
+async function addNewLink(group) {
+  // 创建对话框
+  const dialog = document.createElement('div');
+  dialog.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center';
+  dialog.innerHTML = `
+    <div class="bg-white p-4 rounded-lg shadow-lg w-96">
+      <h3 class="text-base font-bold mb-2">添加新链接到 "${group.name}" 分组</h3>
+      <div class="mb-4">
+        <label class="block text-sm font-medium text-gray-700 mb-1">链接标题 (可选)</label>
+        <input type="text" id="newLinkTitle" class="w-full p-2 border rounded" placeholder="请输入链接标题，留空则使用链接地址">
+      </div>
+      <div class="mb-4">
+        <label class="block text-sm font-medium text-gray-700 mb-1">链接地址</label>
+        <input type="url" id="newLinkUrl" class="w-full p-2 border rounded" placeholder="请输入链接地址 (https://...)">
+      </div>
+      <div class="flex justify-end space-x-2">
+        <button class="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300" id="cancelAddLink">取消</button>
+        <button class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600" id="confirmAddLink">添加</button>
+      </div>
+    </div>
+  `;
+  
+  // 显示对话框
+  document.body.appendChild(dialog);
+  
+  // 获取输入框引用
+  const titleInput = dialog.querySelector('#newLinkTitle');
+  const urlInput = dialog.querySelector('#newLinkUrl');
+  
+  // 设置URL输入框默认获取焦点
+  urlInput.focus();
+  
+  // 处理取消按钮
+  dialog.querySelector('#cancelAddLink').onclick = () => {
+    document.body.removeChild(dialog);
+  };
+  
+  // 添加回车键提交功能
+  urlInput.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') {
+      dialog.querySelector('#confirmAddLink').click();
+    }
+  });
+  
+  titleInput.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') {
+      urlInput.focus();
+    }
+  });
+  
+  // 处理确认按钮
+  dialog.querySelector('#confirmAddLink').onclick = async () => {
+    const newTitle = titleInput.value.trim();
+    let newUrl = urlInput.value.trim();
+    
+    // 验证URL
+    if (!newUrl) {
+      alert('请输入链接地址');
+      urlInput.focus();
+      return;
+    }
+    
+    // 如果URL没有协议前缀，添加https://
+    if (!/^https?:\/\//i.test(newUrl)) {
+      newUrl = 'https://' + newUrl;
+    }
+    
+    // 如果没有输入标题，使用URL作为标题
+    const linkTitle = newTitle || newUrl;
+    
+    try {
+      // 获取分组的标签
+      const result = await chrome.storage.local.get(['groups']);
+      const groups = result.groups || [];
+      const currentGroup = groups.find(g => g.id === group.id);
+      
+      if (!currentGroup) {
+        alert('分组不存在');
+        document.body.removeChild(dialog);
+        return;
+      }
+      
+      // 解压标签数据
+      const tabs = decompressData(currentGroup.tabs);
+      
+      // 添加新链接
+      tabs.push({
+        title: linkTitle,
+        url: newUrl
+      });
+      
+      // 更新分组
+      const updatedGroups = groups.map(g => {
+        if (g.id === group.id) {
+          return {
+            ...g,
+            tabs: compressData(tabs),
+            lastModified: new Date().toISOString()
+          };
+        }
+        return g;
+      });
+      
+      // 保存更新
+      await chrome.storage.local.set({ groups: updatedGroups });
+      
+      // 关闭对话框并刷新显示
+      document.body.removeChild(dialog);
+      loadGroups();
+    } catch (error) {
+      console.error('添加链接失败:', error);
+      alert('添加链接失败，请重试');
+    }
+  };
 }
 
 // 搜索框监听
